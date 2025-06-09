@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
+import { AppSidebar } from "@/components/AppSidebar"
 import { MessageCircle, Send, Bot, User } from "lucide-react"
 
 interface Message {
@@ -110,17 +112,18 @@ Bạn cần hỗ trợ gì hôm nay?`,
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-          <MessageCircle className="w-6 h-6 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Chatbot hỗ trợ</h1>
-          <p className="text-muted-foreground">Trợ lý ảo hỗ trợ tư vấn và đặt lịch khám bệnh</p>
-        </div>
-      </div>
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-background">
+        <AppSidebar />
+        <main className="flex-1">
+          <header className="h-16 border-b bg-card flex items-center px-6">
+            <SidebarTrigger className="mr-4" />
+            <div className="flex-1">
+              <h1 className="text-xl font-semibold">Chatbot hỗ trợ</h1>
+              <p className="text-sm text-muted-foreground">Trợ lý ảo hỗ trợ tư vấn và đặt lịch khám bệnh</p>
+            </div>
+          </header>
+          <div className="p-6 space-y-6">
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Chat Interface */}
@@ -265,6 +268,9 @@ Bạn cần hỗ trợ gì hôm nay?`,
           </Card>
         </div>
       </div>
-    </div>
+          </div>
+        </main>
+      </div>
+    </SidebarProvider>
   )
 }

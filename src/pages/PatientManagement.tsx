@@ -4,7 +4,9 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { PatientForm } from "@/components/PatientForm"
-import { UserPlus, Search, Plus, Edit, X } from "lucide-react"
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
+import { AppSidebar } from "@/components/AppSidebar"
+import { UserPlus, Search, Plus, Edit, X, ArrowLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface Patient {
@@ -123,31 +125,62 @@ export default function PatientManagement() {
 
   if (showForm) {
     return (
-      <div className="container mx-auto p-6">
-        <PatientForm
-          patient={editingPatient}
-          onSave={handleSave}
-          onCancel={handleCancel}
-        />
-      </div>
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full bg-background">
+          <AppSidebar />
+          <main className="flex-1">
+            <header className="h-16 border-b bg-card flex items-center px-6">
+              <SidebarTrigger className="mr-4" />
+              <Button 
+                variant="ghost" 
+                onClick={handleCancel}
+                className="mr-4 gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Quay lại
+              </Button>
+              <div className="flex-1">
+                <h1 className="text-xl font-semibold">
+                  {editingPatient ? 'Sửa thông tin bệnh nhân' : 'Thêm bệnh nhân mới'}
+                </h1>
+              </div>
+            </header>
+            <div className="p-6">
+              <PatientForm
+                patient={editingPatient}
+                onSave={handleSave}
+                onCancel={handleCancel}
+              />
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
     )
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Quản lý bệnh nhân</h1>
-          <p className="text-muted-foreground mt-1">
-            Quản lý hồ sơ bệnh nhân trong hệ thống
-          </p>
-        </div>
-        <Button onClick={() => setShowForm(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Thêm bệnh nhân
-        </Button>
-      </div>
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-background">
+        <AppSidebar />
+        <main className="flex-1">
+          <header className="h-16 border-b bg-card flex items-center px-6">
+            <SidebarTrigger className="mr-4" />
+            <div className="flex-1">
+              <h1 className="text-xl font-semibold">Quản lý bệnh nhân</h1>
+              <p className="text-sm text-muted-foreground">Quản lý hồ sơ bệnh nhân trong hệ thống</p>
+            </div>
+          </header>
+          <div className="p-6 space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">Danh sách bệnh nhân</h2>
+              </div>
+              <Button onClick={() => setShowForm(true)} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Thêm bệnh nhân
+              </Button>
+            </div>
 
       {/* Search */}
       <Card>
@@ -312,6 +345,9 @@ export default function PatientManagement() {
           </CardContent>
         </Card>
       )}
-    </div>
+          </div>
+        </main>
+      </div>
+    </SidebarProvider>
   )
 }
