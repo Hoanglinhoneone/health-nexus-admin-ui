@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -6,49 +6,9 @@ import { Badge } from "@/components/ui/badge"
 import { AppointmentForm } from "@/components/AppointmentForm"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
-import { Calendar, Search, Plus, Edit, X, Clock, ArrowLeft } from "lucide-react"
+import { Calendar, Search, Plus, Edit, X, Clock, ArrowLeft, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-
-interface Appointment {
-  id: string
-  patientName: string
-  patientPhone: string
-  doctorName: string
-  specialty: string
-  appointmentDate: string
-  appointmentTime: string
-  reason: string
-  status: string
-  notes: string
-}
-
-// Mock data
-const mockAppointments: Appointment[] = [
-  {
-    id: "1",
-    patientName: "Nguyễn Thị C",
-    patientPhone: "0123456789",
-    doctorName: "BS. Nguyễn Văn A",
-    specialty: "Tim mạch",
-    appointmentDate: "2024-06-10",
-    appointmentTime: "08:00",
-    reason: "Khám định kỳ tim mạch",
-    status: "confirmed",
-    notes: "Bệnh nhân có tiền sử cao huyết áp"
-  },
-  {
-    id: "2",
-    patientName: "Trần Văn E", 
-    patientPhone: "0987654321",
-    doctorName: "BS. Trần Thị B",
-    specialty: "Nhi khoa",
-    appointmentDate: "2024-06-11",
-    appointmentTime: "10:00",
-    reason: "Khám sức khỏe định kỳ cho trẻ",
-    status: "scheduled",
-    notes: ""
-  }
-]
+import { apiService, Appointment } from "@/lib/api"
 
 const statusLabels = {
   scheduled: { label: "Đã đặt lịch", variant: "secondary" as const },
@@ -58,11 +18,32 @@ const statusLabels = {
 }
 
 export default function Appointments() {
-  const [appointments, setAppointments] = useState<Appointment[]>(mockAppointments)
+  const [appointments, setAppointments] = useState<Appointment[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [showForm, setShowForm] = useState(false)
   const [editingAppointment, setEditingAppointment] = useState<Appointment | undefined>()
+  const [loading, setLoading] = useState(true)
   const { toast } = useToast()
+
+  useEffect(() => {
+    loadAppointments()
+  }, [])
+
+  const loadAppointments = async () => {
+    try {
+      setLoading(true)
+      const data = await apiService.getAppointments()
+      setAppointments(data)
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải danh sách lịch hẹn",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filteredAppointments = appointments.filter(appointment =>
     appointment.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -71,32 +52,33 @@ export default function Appointments() {
     appointment.patientPhone.includes(searchTerm)
   )
 
-  const handleSave = (appointmentData: Omit<Appointment, 'id'>) => {
-    if (editingAppointment) {
-      // Update existing appointment
-      setAppointments(prev => prev.map(a => 
-        a.id === editingAppointment.id 
-          ? { ...appointmentData, id: editingAppointment.id }
-          : a
-      ))
-      toast({
-        title: "Thành công",
-        description: "Đã cập nhật lịch hẹn",
-      })
-    } else {
-      // Add new appointment
-      const newAppointment: Appointment = {
-        ...appointmentData,
-        id: Date.now().toString()
+  const handleSave = async (appointmentData: Omit<Appointment, 'id'>) => {
+    try {
+      if (editingAppointment) {
+        // Update existing appointment
+        await apiService.updateAppointment(editingAppointment.id!, appointmentData)
+        toast({
+          title: "Thành công",
+          description: "Đã cập nhật lịch hẹn",
+        })
+      } else {
+        // Add new appointment
+        await apiService.createAppointment(appointmentData)
+        toast({
+          title: "Thành công",
+          description: "Đã đặt lịch hẹn mới",
+        })
       }
-      setAppointments(prev => [...prev, newAppointment])
+      await loadAppointments()
+      setShowForm(false)
+      setEditingAppointment(undefined)
+    } catch (error) {
       toast({
-        title: "Thành công",
-        description: "Đã đặt lịch hẹn mới",
+        title: "Lỗi",
+        description: editingAppointment ? "Không thể cập nhật lịch hẹn" : "Không thể đặt lịch hẹn",
+        variant: "destructive"
       })
     }
-    setShowForm(false)
-    setEditingAppointment(undefined)
   }
 
   const handleEdit = (appointment: Appointment) => {
@@ -104,12 +86,21 @@ export default function Appointments() {
     setShowForm(true)
   }
 
-  const handleDelete = (appointmentId: string) => {
-    setAppointments(prev => prev.filter(a => a.id !== appointmentId))
-    toast({
-      title: "Đã hủy",
-      description: "Lịch hẹn đã được hủy",
-    })
+  const handleDelete = async (appointmentId: string) => {
+    try {
+      await apiService.deleteAppointment(appointmentId)
+      await loadAppointments()
+      toast({
+        title: "Đã hủy",
+        description: "Lịch hẹn đã được hủy",
+      })
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể hủy lịch hẹn",
+        variant: "destructive"
+      })
+    }
   }
 
   const handleCancel = () => {
@@ -264,8 +255,13 @@ export default function Appointments() {
       </div>
 
       {/* Appointments List */}
-      <div className="space-y-4">
-        {filteredAppointments.map((appointment) => (
+      {loading ? (
+        <div className="flex justify-center items-center py-8">
+          <Loader2 className="w-8 h-8 animate-spin" />
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filteredAppointments.map((appointment) => (
           <Card key={appointment.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
@@ -329,9 +325,10 @@ export default function Appointments() {
                 </div>
               </div>
             </CardContent>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {filteredAppointments.length === 0 && (
         <Card>

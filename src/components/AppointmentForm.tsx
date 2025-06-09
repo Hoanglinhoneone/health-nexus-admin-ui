@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { X } from "lucide-react"
+import { apiService, Doctor } from "@/lib/api"
 
 interface Appointment {
   id?: string
@@ -25,14 +26,6 @@ interface AppointmentFormProps {
   onSave: (appointment: Omit<Appointment, 'id'>) => void
   onCancel: () => void
 }
-
-const doctors = [
-  { name: "BS. Nguyễn Văn A", specialty: "Tim mạch" },
-  { name: "BS. Trần Thị B", specialty: "Nhi khoa" },
-  { name: "BS. Lê Văn C", specialty: "Da liễu" },
-  { name: "BS. Phạm Thị D", specialty: "Thần kinh" },
-  { name: "BS. Hoàng Văn E", specialty: "Nội tổng hợp" },
-]
 
 const timeSlots = [
   "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
@@ -58,6 +51,24 @@ export function AppointmentForm({ appointment, onSave, onCancel }: AppointmentFo
     status: appointment?.status || "scheduled",
     notes: appointment?.notes || "",
   })
+  const [doctors, setDoctors] = useState<Doctor[]>([])
+  const [loadingDoctors, setLoadingDoctors] = useState(true)
+
+  useEffect(() => {
+    loadDoctors()
+  }, [])
+
+  const loadDoctors = async () => {
+    try {
+      setLoadingDoctors(true)
+      const data = await apiService.getDoctors()
+      setDoctors(data)
+    } catch (error) {
+      console.error('Failed to load doctors:', error)
+    } finally {
+      setLoadingDoctors(false)
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -119,11 +130,17 @@ export function AppointmentForm({ appointment, onSave, onCancel }: AppointmentFo
                   <SelectValue placeholder="Chọn bác sỹ" />
                 </SelectTrigger>
                 <SelectContent>
-                  {doctors.map(doctor => (
-                    <SelectItem key={doctor.name} value={doctor.name}>
-                      {doctor.name} - {doctor.specialty}
+                  {loadingDoctors ? (
+                    <SelectItem value="loading" disabled>
+                      Đang tải...
                     </SelectItem>
-                  ))}
+                  ) : (
+                    doctors.map(doctor => (
+                      <SelectItem key={doctor.id} value={doctor.name}>
+                        {doctor.name} - {doctor.specialty}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>

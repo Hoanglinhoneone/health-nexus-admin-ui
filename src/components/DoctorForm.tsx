@@ -6,18 +6,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { X } from "lucide-react"
-
-interface Doctor {
-  id?: string
-  name: string
-  email: string
-  phone: string
-  specialty: string
-  experience: string
-  education: string
-  description: string
-  availability: string[]
-}
+import { Doctor } from "@/lib/api"
 
 interface DoctorFormProps {
   doctor?: Doctor

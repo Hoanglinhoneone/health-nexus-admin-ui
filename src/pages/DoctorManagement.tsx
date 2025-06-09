@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -6,53 +6,37 @@ import { Badge } from "@/components/ui/badge"
 import { DoctorForm } from "@/components/DoctorForm"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
-import { User, Search, Plus, Edit, X, ArrowLeft } from "lucide-react"
+import { User, Search, Plus, Edit, X, ArrowLeft, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-
-interface Doctor {
-  id: string
-  name: string
-  email: string
-  phone: string
-  specialty: string
-  experience: string
-  education: string
-  description: string
-  availability: string[]
-}
-
-// Mock data
-const mockDoctors: Doctor[] = [
-  {
-    id: "1",
-    name: "BS. Nguyễn Văn A",
-    email: "nguyenvana@hospital.com",
-    phone: "0123456789",
-    specialty: "Tim mạch",
-    experience: "10",
-    education: "Đại học Y Hà Nội",
-    description: "Chuyên gia điều trị các bệnh tim mạch với 10 năm kinh nghiệm",
-    availability: ["08:00-10:00", "14:00-16:00"]
-  },
-  {
-    id: "2", 
-    name: "BS. Trần Thị B",
-    email: "tranthib@hospital.com",
-    phone: "0987654321",
-    specialty: "Nhi khoa",
-    experience: "8",
-    education: "Đại học Y Dược TP.HCM",
-    description: "Bác sỹ nhi khoa giàu kinh nghiệm trong điều trị trẻ em",
-    availability: ["10:00-12:00", "16:00-18:00"]
-  }
-]
+import { apiService, Doctor } from "@/lib/api"
 
 export default function DoctorManagement() {
-  const [doctors, setDoctors] = useState<Doctor[]>(mockDoctors)
+  const [doctors, setDoctors] = useState<Doctor[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [showForm, setShowForm] = useState(false)
   const [editingDoctor, setEditingDoctor] = useState<Doctor | undefined>()
+  const [loading, setLoading] = useState(true)
   const { toast } = useToast()
+
+  useEffect(() => {
+    loadDoctors()
+  }, [])
+
+  const loadDoctors = async () => {
+    try {
+      setLoading(true)
+      const data = await apiService.getDoctors()
+      setDoctors(data)
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải danh sách bác sỹ",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filteredDoctors = doctors.filter(doctor =>
     doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -60,32 +44,33 @@ export default function DoctorManagement() {
     doctor.email.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const handleSave = (doctorData: Omit<Doctor, 'id'>) => {
-    if (editingDoctor) {
-      // Update existing doctor
-      setDoctors(prev => prev.map(d => 
-        d.id === editingDoctor.id 
-          ? { ...doctorData, id: editingDoctor.id }
-          : d
-      ))
-      toast({
-        title: "Thành công",
-        description: "Đã cập nhật thông tin bác sỹ",
-      })
-    } else {
-      // Add new doctor
-      const newDoctor: Doctor = {
-        ...doctorData,
-        id: Date.now().toString()
+  const handleSave = async (doctorData: Omit<Doctor, 'id'>) => {
+    try {
+      if (editingDoctor) {
+        // Update existing doctor
+        await apiService.updateDoctor(editingDoctor.id!, doctorData)
+        toast({
+          title: "Thành công",
+          description: "Đã cập nhật thông tin bác sỹ",
+        })
+      } else {
+        // Add new doctor
+        await apiService.createDoctor(doctorData)
+        toast({
+          title: "Thành công", 
+          description: "Đã thêm bác sỹ mới",
+        })
       }
-      setDoctors(prev => [...prev, newDoctor])
+      await loadDoctors()
+      setShowForm(false)
+      setEditingDoctor(undefined)
+    } catch (error) {
       toast({
-        title: "Thành công", 
-        description: "Đã thêm bác sỹ mới",
+        title: "Lỗi",
+        description: editingDoctor ? "Không thể cập nhật bác sỹ" : "Không thể thêm bác sỹ",
+        variant: "destructive"
       })
     }
-    setShowForm(false)
-    setEditingDoctor(undefined)
   }
 
   const handleEdit = (doctor: Doctor) => {
@@ -93,12 +78,21 @@ export default function DoctorManagement() {
     setShowForm(true)
   }
 
-  const handleDelete = (doctorId: string) => {
-    setDoctors(prev => prev.filter(d => d.id !== doctorId))
-    toast({
-      title: "Đã xóa",
-      description: "Bác sỹ đã được xóa khỏi hệ thống",
-    })
+  const handleDelete = async (doctorId: string) => {
+    try {
+      await apiService.deleteDoctor(doctorId)
+      await loadDoctors()
+      toast({
+        title: "Đã xóa",
+        description: "Bác sỹ đã được xóa khỏi hệ thống",
+      })
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể xóa bác sỹ",
+        variant: "destructive"
+      })
+    }
   }
 
   const handleCancel = () => {
@@ -226,8 +220,13 @@ export default function DoctorManagement() {
       </div>
 
       {/* Doctors List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredDoctors.map((doctor) => (
+      {loading ? (
+        <div className="flex justify-center items-center py-8">
+          <Loader2 className="w-8 h-8 animate-spin" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredDoctors.map((doctor) => (
           <Card key={doctor.id} className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
@@ -290,9 +289,10 @@ export default function DoctorManagement() {
                 </div>
               )}
             </CardContent>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {filteredDoctors.length === 0 && (
         <Card>
